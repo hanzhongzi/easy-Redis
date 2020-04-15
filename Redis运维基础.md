@@ -118,16 +118,20 @@ OK
 "\xe8\xbf\x99\xe6\x98\xaf\xe4\xb8\x80\xe4\xb8\xaastring\xe7\xb1\xbb\xe5\x9e\x8b\xe7\x9a\x84\xe6\x95\xb0\xe6\x8d\xae"
 
 ```
+
 在登陆时使用**--raw**参数可以防止中文乱码，【其实没有乱码】。
+
 ```
 ./redis-cli  -p 63079 -a 'qwer1234' --raw
 127.0.0.1:63079> GET var1 
 这是一个string类型的数据
 ```
+
 从这里知道**GET** 和 **SET** 命令时用来定义和读取key的。(可大写，可小写)
 补充 **DEL**是用来删除key的
 
 ### 2.Hash：
+
  一个键值对应一对集合，**hash**是一个string类型的field和value的映射表，特别适合存储对象。
 
 ```
@@ -352,13 +356,70 @@ UNSUBSCRIBE [channel [channel ...]]
 
 
 
+## 8.事务
+
+Redis 事务可以一次执行多个命令， 并且带有以下三个重要的保证：
+
+- 批量操作在发送 EXEC 命令前被放入队列缓存。
+- 收到 EXEC 命令后进入事务执行，事务中任意命令执行失败，其余的命令依然被执行。
+- 在事务执行过程，其他客户端提交的命令请求不会插入到事务执行命令序列中。
+
+一个事务从开始到执行会经历以下三个阶段：
+
+- 开始事务。
+- 命令入队。
+- 执行事务。
+
+单个 Redis 命令的执行是原子性的，但 Redis 没有在事务上增加任何维持原子性的机制，**所以 Redis 事务的执行并不是原子性的。事务可以理解为一个打包的批量执行脚本，但批量指令并非原子化的操作，中间某条指令的失败不会导致前面已做指令的回滚，也不会造成后续的指令不做。**
 
 
 
+```
+127.0.0.1:63079> ping
+PONG
+127.0.0.1:63079> multi
+OK
+127.0.0.1:63079> set name "hanzhong"
+QUEUED
+127.0.0.1:63079> get name
+QUEUED
+127.0.0.1:63079> SADD str "123" "asd"
+QUEUED
+127.0.0.1:63079> exec
+1) OK
+2) "hanzhong"
+3) (integer) 2
+127.0.0.1:63079> 
+
+```
+
+
+
+| 序号 | 命令及描述                                                   |
+| :--- | :----------------------------------------------------------- |
+| 1    | [DISCARD](https://www.runoob.com/redis/transactions-discard.html) 取消事务，放弃执行事务块内的所有命令。 |
+| 2    | [EXEC](https://www.runoob.com/redis/transactions-exec.html) 执行所有事务块内的命令。 |
+| 3    | [MULTI](https://www.runoob.com/redis/transactions-multi.html) 标记一个事务块的开始。 |
+| 4    | [UNWATCH](https://www.runoob.com/redis/transactions-unwatch.html) 取消 WATCH 命令对所有 key 的监视。 |
+| 5    | [WATCH key [key ...\]](https://www.runoob.com/redis/transactions-watch.html) 监视一个(或多个) key ，如果在事务执行之前这个(或这些) key 被其他命令所改动，那么事务将被打断。 |
 
 ----
 
 
+
+
+
+## 9.Redis 连接命令
+
+下表列出了 redis 连接的基本命令：
+
+| 序号 | 命令及描述                                                   |
+| :--- | :----------------------------------------------------------- |
+| 1    | [AUTH password](https://www.runoob.com/redis/connection-auth.html) 验证密码是否正确 |
+| 2    | [ECHO message](https://www.runoob.com/redis/connection-echo.html) 打印字符串 |
+| 3    | [PING](https://www.runoob.com/redis/connection-ping.html) 查看服务是否运行 |
+| 4    | [QUIT](https://www.runoob.com/redis/connection-quit.html) 关闭当前连接 |
+| 5    | [SELECT index](https://www.runoob.com/redis/connection-select.html) 切换到指定的数据库 |
 
 ## 远程登录
 
@@ -370,3 +431,51 @@ UNSUBSCRIBE [channel [channel ...]]
 
 
 
+## 10.Redis 数据备份与恢复
+
+Redis **SAVE** 命令用于创建当前数据库的备份。
+
+### 语法
+
+redis Save 命令基本语法如下：
+
+```
+redis 127.0.0.1:6379> SAVE 
+```
+
+### 实例
+
+```
+redis 127.0.0.1:6379> SAVE 
+OK
+```
+
+该命令将在 redis 安装目录中创建dump.rdb文件。
+
+------
+
+## 恢复数据
+
+如果需要恢复数据，只需将备份文件 (dump.rdb) 移动到 redis 安装目录并启动服务即可。获取 redis 目录可以使用 **CONFIG** 命令，如下所示：
+
+```
+redis 127.0.0.1:6379> CONFIG GET dir
+1) "dir"
+2) "/usr/local/redis/bin"
+```
+
+以上命令 **CONFIG GET dir** 输出的 redis 安装目录为 /usr/local/redis/bin。
+
+------
+
+## Bgsave
+
+创建 redis 备份文件也可以使用命令 **BGSAVE**，该命令在后台执行。
+
+### 实例
+
+```
+127.0.0.1:6379> BGSAVE
+
+Background saving started
+```
